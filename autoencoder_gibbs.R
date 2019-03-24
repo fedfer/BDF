@@ -2,7 +2,7 @@
 library(bayesSurv)
 
 ### Generate Data
-p = 20;k = 20; n = 1000
+p = 20;k = 5; n = 200
 L = matrix(rnorm(p*k,0,1),p,k)
 X = matrix(rnorm(n*k,0,1),n,k)%*%t(L)
 #X = matrix(rnorm(n*p,0,1),n,p)
@@ -45,10 +45,19 @@ beta = matrix(0, nrow = nrun-burn, ncol = p)
 for(s in 1:nrun){
    
    # --- update eta ---
+   V = solve(diag(csi) + theta%*%t(theta)/sigmasq)
    for(i in 1:n){
+      
+      m = V%*%(theta*y[i]/sigmasq + t(Lambda)%*%diag(psi)%*%X[i,])
       eta[i,] = bayesSurv::rMVNorm(1, 
-                               mean = Gamma%*%X[i,], 
-                               Sigma = Csi)
+                               mean = m, 
+                               Sigma = V)
+      
+      
+      # update without the regression
+      #eta[i,] = bayesSurv::rMVNorm(1, 
+      #                             mean = Gamma%*%X[i,] , 
+      #                             Sigma = Csi)
    }
    
    # --- update Lambda 
@@ -102,7 +111,7 @@ for(s in 1:nrun){
       Psi_st[s-burn,] = psi
       Csi_st[s-burn,] = csi
       beta[s-burn,] = as.numeric(t(theta)%*%Gamma)
-      sigmasq_st[s-burn,] = sigmasq
+      sigmasq_st[s-burn] = sigmasq
    }
    
    if(s%%200 == 0){
